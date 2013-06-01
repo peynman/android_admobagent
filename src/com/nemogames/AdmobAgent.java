@@ -11,6 +11,7 @@ import android.location.Location;
 import android.util.Log;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout.LayoutParams;
 import android.widget.RelativeLayout;
 
 import com.google.ads.Ad;
@@ -24,6 +25,7 @@ import com.unity3d.player.UnityPlayer;
 
 public class AdmobAgent implements AdListener
 {
+	public static int		FullscreenBannerID = -1000;
 	private String		ListenerGameObject = "";
 	private String		ListenerFunction = "";
 	private Activity	RootActivity;
@@ -35,6 +37,7 @@ public class AdmobAgent implements AdListener
 	private boolean		inited = false;
 	private boolean		fullscreen_ready = false;
 	private InterstitialAd		fullScreenBanner;
+	private FrameLayout		RootLayout = null;
 	
 	public enum		AdmobBannerSize
 	{
@@ -88,12 +91,15 @@ public class AdmobAgent implements AdListener
 					Log.d("Nemo - AdmobAgent", "Creating banner with id: " + iid + "...");
 					AdView ad = new AdView(RootActivity, getAdSizeByEnumeration(banner_size), uid);
 					ad.setAdListener(AdmobAgent.this);
+					if (RootLayout == null)
+					{
+						RootLayout = new FrameLayout(RootActivity);
+						RootActivity.getWindow().addContentView(RootLayout, new 
+								LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+					}
 					
-					RelativeLayout rl = new RelativeLayout(RootActivity);
-					RelativeLayout.LayoutParams params = new 
-							RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-					rl.addView(ad);
-					RootActivity.getWindow().addContentView(rl, params);
+					RootLayout.addView(ad, new 
+							FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
 					ad.loadAd(AdmobAgent.this.getAdRequest());
 					AdmobAgent.this.banners.put(iid, ad);
 				}
@@ -115,7 +121,7 @@ public class AdmobAgent implements AdListener
 				{
 					AdView ad = (AdView)banners.get(iid);
 					FrameLayout.LayoutParams params = new 
-								FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+							FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
 					params.leftMargin = left;
 					params.topMargin = top;
 					ad.setLayoutParams(params);
@@ -161,6 +167,20 @@ public class AdmobAgent implements AdListener
 				}
 			});
 		}
+	}
+	
+	public void		DestroyBanner(final int iid)
+	{
+		RootActivity.runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run() 
+			{
+				AdView ad = (AdView)banners.get(iid);
+				RootLayout.removeView(ad);
+				ad.destroy();
+			}
+		});
 	}
 	
 	public void		RequestFullscreenAd(final String uid)
@@ -280,28 +300,53 @@ public class AdmobAgent implements AdListener
 	public void onDismissScreen(Ad arg0) 
 	{
 		Log.d("Nemo - AdmobAgent", "onDismissScreen");
-		SendAdmobEvent(AdmobEvent.OnDismissScreen, this.getBannerID(arg0));
+		if (arg0 != this.fullScreenBanner)
+		{
+			SendAdmobEvent(AdmobEvent.OnDismissScreen, this.getBannerID(arg0));
+		} else
+		{
+			SendAdmobEvent(AdmobEvent.OnDismissScreen, FullscreenBannerID);
+		}
 	}
 
 	@Override
 	public void onFailedToReceiveAd(Ad arg0, ErrorCode arg1) 
 	{
 		Log.d("Nemo - AdmobAgent", "onFailedToReceiveAd: " + arg1.toString());
-		SendAdmobEvent(AdmobEvent.OnFailedToReceiveAd, this.getBannerID(arg0), arg1.toString());
+		if (arg0 != this.fullScreenBanner)
+		{
+			SendAdmobEvent(AdmobEvent.OnFailedToReceiveAd, this.getBannerID(arg0), arg1.toString());
+		} else
+		{
+			SendAdmobEvent(AdmobEvent.OnFailedToReceiveAd, FullscreenBannerID, arg1.toString());
+		}
 	}
 
 	@Override
 	public void onLeaveApplication(Ad arg0) 
 	{
 		Log.d("Nemo - AdmobAgent", "onLeaveApplication");
-		SendAdmobEvent(AdmobEvent.OnLeaveApplication, this.getBannerID(arg0));
+		if (arg0 != this.fullScreenBanner)
+		{
+			SendAdmobEvent(AdmobEvent.OnLeaveApplication, this.getBannerID(arg0));
+		} else
+		{
+			SendAdmobEvent(AdmobEvent.OnLeaveApplication, FullscreenBannerID);
+		}
+			
 	}
 
 	@Override
 	public void onPresentScreen(Ad arg0) 
 	{
 		Log.d("Nemo - AdmobAgent", "onPresentScreen");
-		SendAdmobEvent(AdmobEvent.OnPresentScreen, this.getBannerID(arg0));
+		if (arg0 != this.fullScreenBanner)
+		{
+			SendAdmobEvent(AdmobEvent.OnPresentScreen, this.getBannerID(arg0));
+		} else
+		{
+			SendAdmobEvent(AdmobEvent.OnPresentScreen, FullscreenBannerID);
+		}
 	}
 
 	@Override
@@ -315,7 +360,7 @@ public class AdmobAgent implements AdListener
 		} else
 		{
 			this.fullscreen_ready = true;
-			SendAdmobEvent(AdmobEvent.OnFullscreenAdReady, 0);
+			SendAdmobEvent(AdmobEvent.OnReceiveAd, FullscreenBannerID);
 		}
 	}
 }
