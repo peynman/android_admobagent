@@ -10,9 +10,9 @@ import android.app.Activity;
 import android.location.Location;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout.LayoutParams;
-import android.widget.RelativeLayout;
 
 import com.google.ads.Ad;
 import com.google.ads.AdListener;
@@ -97,7 +97,6 @@ public class AdmobAgent implements AdListener
 						RootActivity.getWindow().addContentView(RootLayout, new 
 								LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 					}
-					
 					RootLayout.addView(ad, new 
 							FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
 					ad.loadAd(AdmobAgent.this.getAdRequest());
@@ -350,13 +349,27 @@ public class AdmobAgent implements AdListener
 	}
 
 	@Override
-	public void onReceiveAd(Ad arg0) 
+	public void onReceiveAd(Ad ad) 
 	{
 		Log.d("Nemo - AdmobAgent", "onReceiveAd");
-		if (arg0 != this.fullScreenBanner)
+		if (ad != this.fullScreenBanner)
 		{
-			SendAdmobEvent(AdmobEvent.OnReceiveAd,
-					this.getBannerID(arg0), ((AdView)arg0).getWidth(), ((AdView)arg0).getHeight());
+			final AdView view = (AdView)ad;
+			if (view.getViewTreeObserver().isAlive())
+			{
+				view.getViewTreeObserver().addOnGlobalLayoutListener(new OnGlobalLayoutListener() 
+				{
+					@Override
+					public void onGlobalLayout() 
+					{
+						view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+						SendAdmobEvent(AdmobEvent.OnReceiveAd,
+								AdmobAgent.this.getBannerID(view), (view).getWidth(), (view).getHeight());
+					}					
+				});
+			} else
+				SendAdmobEvent(AdmobEvent.OnReceiveAd,
+						this.getBannerID(ad), ((AdView)ad).getWidth(), ((AdView)ad).getHeight());
 		} else
 		{
 			this.fullscreen_ready = true;
