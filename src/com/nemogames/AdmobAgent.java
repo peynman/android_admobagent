@@ -10,6 +10,7 @@ import android.app.Activity;
 import android.location.Location;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout.LayoutParams;
@@ -362,7 +363,12 @@ public class AdmobAgent implements AdListener
 					@Override
 					public void onGlobalLayout() 
 					{
-						view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+						try {
+							view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+						} catch (NoSuchMethodError e)
+						{
+							view.getViewTreeObserver().removeGlobalOnLayoutListener(this);
+						}
 						SendAdmobEvent(AdmobEvent.OnReceiveAd,
 								AdmobAgent.this.getBannerID(view), (view).getWidth(), (view).getHeight());
 					}					
